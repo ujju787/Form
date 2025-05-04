@@ -1,0 +1,256 @@
+<!DOCTYPE html><html>
+<head>
+  <title>JS Profile Site</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      let isDark = false;
+      let currentUser = null;
+      let navContainer = null;const applyTheme = () => {
+    document.body.style.backgroundColor = isDark ? "#121212" : "#f4f4f4";
+    document.body.style.color = isDark ? "#e0e0e0" : "#000";
+    document.querySelector("nav").style.backgroundColor = isDark ? "#222" : "#333";
+  };
+
+  const styleNavButton = (btn) => {
+    btn.style.background = "none";
+    btn.style.border = "none";
+    btn.style.color = "#fff";
+    btn.style.cursor = "pointer";
+    btn.style.fontSize = "16px";
+    btn.style.marginRight = "1em";
+  };
+
+  const createNav = () => {
+    const nav = document.createElement("nav");
+    nav.style.display = "flex";
+    nav.style.justifyContent = "space-between";
+    nav.style.alignItems = "center";
+    nav.style.padding = "1em";
+    nav.style.flexWrap = "wrap";
+
+    const left = document.createElement("div");
+    const pages = ["Home"];
+    if (currentUser) {
+      pages.push("Profile", "Export", "Import", "Logout");
+    } else {
+      pages.push("Login", "Signup");
+    }
+
+    pages.forEach(page => {
+      const btn = document.createElement("button");
+      btn.textContent = page;
+      styleNavButton(btn);
+      btn.onclick = () => {
+        if (page === "Logout") {
+          currentUser = null;
+          renderPage("Home");
+          refreshNav();
+        } else if (page === "Export") {
+          exportProfile();
+        } else if (page === "Import") {
+          importProfile();
+        } else {
+          renderPage(page);
+        }
+      };
+      left.appendChild(btn);
+    });
+
+    const right = document.createElement("div");
+    if (currentUser) {
+      const users = JSON.parse(localStorage.getItem("users") || "{}");
+      const img = document.createElement("img");
+      img.src = users[currentUser]?.image || "https://via.placeholder.com/30";
+      img.style.width = "30px";
+      img.style.height = "30px";
+      img.style.borderRadius = "50%";
+      img.style.marginRight = "1em";
+      right.appendChild(img);
+    }
+
+    const toggle = document.createElement("button");
+    toggle.textContent = "Dark Mode";
+    styleNavButton(toggle);
+    toggle.onclick = () => {
+      isDark = !isDark;
+      applyTheme();
+    };
+    right.appendChild(toggle);
+
+    nav.appendChild(left);
+    nav.appendChild(right);
+    return nav;
+  };
+
+  navContainer = createNav();
+  document.body.appendChild(navContainer);
+  const app = document.createElement("div");
+  document.body.appendChild(app);
+  applyTheme();
+
+  function refreshNav() {
+    const newNav = createNav();
+    document.body.replaceChild(newNav, navContainer);
+    navContainer = newNav;
+    applyTheme();
+  }
+
+  const renderPage = (page) => {
+    app.innerHTML = "";
+    const container = document.createElement("div");
+    container.style.padding = "2em";
+    container.style.maxWidth = "400px";
+    container.style.margin = "0 auto";
+    container.style.background = isDark ? "#1e1e1e" : "#fff";
+    container.style.boxShadow = "0 0 10px rgba(0,0,0,0.1)";
+    container.style.borderRadius = "8px";
+
+    const title = document.createElement("h2");
+    title.textContent = page;
+    title.style.textAlign = "center";
+    container.appendChild(title);
+
+    if (page === "Home") {
+      const msg = document.createElement("p");
+      msg.textContent = currentUser ? `Welcome, ${currentUser}!` : "Welcome to our JS-only profile site!";
+      msg.style.textAlign = "center";
+      container.appendChild(msg);
+    } else if (page === "Login" || page === "Signup") {
+      createForm(container, page);
+    } else if (page === "Profile") {
+      renderProfile(container);
+    }
+
+    app.appendChild(container);
+  };
+
+  const createForm = (parent, type) => {
+    const form = document.createElement("form");
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const email = form.email.value.trim();
+      const password = form.password.value.trim();
+      const name = form.name ? form.name.value.trim() : "";
+
+      const users = JSON.parse(localStorage.getItem("users") || "{}");
+
+      if (type === "Signup") {
+        if (users[email]) return alert("User exists");
+        users[email] = { password, name, image: "" };
+        localStorage.setItem("users", JSON.stringify(users));
+        alert("Signup complete");
+        renderPage("Login");
+      } else {
+        if (users[email]?.password === password) {
+          currentUser = email;
+          refreshNav();
+          renderPage("Home");
+        } else alert("Wrong credentials");
+      }
+    };
+
+    form.innerHTML = `
+      <label>Email:</label><br>
+      <input name="email" type="email" required style="width:100%; padding:8px;"><br>
+      <label>Password:</label><br>
+      <input name="password" type="password" required style="width:100%; padding:8px;"><br>
+    `;
+
+    if (type === "Signup") {
+      form.innerHTML += `
+        <label>Name:</label><br>
+        <input name="name" type="text" required style="width:100%; padding:8px;"><br>
+      `;
+    }
+
+    form.innerHTML += `<br><button type="submit" style="width:100%; padding:10px; background:#28a745; color:#fff; border:none; border-radius:5px;">${type}</button>`;
+    parent.appendChild(form);
+  };
+
+  const renderProfile = (container) => {
+    const users = JSON.parse(localStorage.getItem("users") || "{}");
+    const user = users[currentUser];
+
+    const img = document.createElement("img");
+    img.src = user.image || "https://via.placeholder.com/100";
+    img.style.width = img.style.height = "100px";
+    img.style.borderRadius = "50%";
+    img.style.display = "block";
+    img.style.margin = "10px auto";
+    container.appendChild(img);
+
+    const form = document.createElement("form");
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      user.name = form.name.value;
+      if (form.newpass.value) user.password = form.newpass.value;
+      users[currentUser] = user;
+      localStorage.setItem("users", JSON.stringify(users));
+      alert("Profile updated");
+      refreshNav();
+      renderPage("Profile");
+    };
+
+    form.innerHTML = `
+      <label>Name:</label><br>
+      <input name="name" value="${user.name}" style="width:100%; padding:8px;"><br>
+      <label>Upload Image:</label><br>
+      <input type="file" id="uploadImg" accept="image/*" style="width:100%;"><br>
+      <label>New Password:</label><br>
+      <input name="newpass" type="password" style="width:100%; padding:8px;"><br>
+      <button type="submit" style="width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:5px;">Save</button>
+    `;
+    form.querySelector("#uploadImg").addEventListener("change", (e) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        user.image = reader.result;
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    });
+    container.appendChild(form);
+  };
+
+  const exportProfile = () => {
+    const users = JSON.parse(localStorage.getItem("users") || "{}");
+    const blob = new Blob([JSON.stringify(users[currentUser])], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${currentUser}_profile.json`;
+    a.click();
+  };
+
+  const importProfile = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          const users = JSON.parse(localStorage.getItem("users") || "{}");
+          users[currentUser] = data;
+          localStorage.setItem("users", JSON.stringify(users));
+          alert("Profile imported");
+          refreshNav();
+          renderPage("Profile");
+        } catch (e) {
+          alert("Invalid JSON file");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  renderPage("Home");
+});
+
+  </script>
+</head>
+<body style="margin:0; font-family:Arial, sans-serif;"></body>
+</html>
